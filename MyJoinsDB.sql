@@ -1,74 +1,98 @@
 DROP database MyJoinsDB;
 CREATE DATABASE MyJoinsDB;
-USE MyJoinsDB;
+use MyJoinsDB;
 
-# В 1-й таблице содержатся имена и номера телефонов сотрудников компании
-CREATE TABLE Employees (
-  EmployeeID INT PRIMARY KEY AUTO_INCREMENT,
-  FirstName VARCHAR(50),
-  LastName VARCHAR(50),
-  PhoneNumber VARCHAR(20)
-);
-# Во 2-й таблице содержатся ведомости о зарплате и должностях сотрудников: главный директор, менеджер, рабочий.
-CREATE TABLE Salaries (
-  EmployeeID INT ,
-  Position VARCHAR(50),
-  Salary DECIMAL(10,2),
-  PRIMARY KEY (EmployeeID),
-  foreign key (EmployeeID) REFERENCES Employees(EmployeeID)
+/* в попередніх завданнях ми використовували кластеризовані індекси (id), які виступали PRIMARY KEY.
+Відповідно сортування відбувалося по  id. Проте іноді, може виникнути необхідність, наприклад, відсортувати 
+за прізвищами в алфавітному порядку. Ми це можемо зробити зробити за допомогою некластеризованого індекса. 
+Сортування відбудеться за алфавітним порядком, навіть при наявності PRIMARY KEY (кластеризованого індексу), 
+так як некластеризований індекс є в пріоритететі виконання.*/
+
+create table Employees
+(Employees_id int  not null ,
+LName VARCHAR(50) NOT NULL ,
+FName VARCHAR(50) NOT NULL ,
+MName VARCHAR(50) NOT NULL ,
+phone varchar(30) NOT NULL 
 );
 
-CREATE TABLE PersonalInfo (
-  EmployeeID INT ,
-  BirthDate DATE,
-  MaritalStatus VARCHAR(10),
-  Address VARCHAR(100),
-  PRIMARY KEY (EmployeeID),
-  foreign key (EmployeeID) REFERENCES Employees(EmployeeID)
+/* створення некластеризованого індекса вручну*/
+CREATE INDEX idx_pname
+ON Employees (LName, FName,MName,phone );
+
+ALTER TABLE Employees ADD 
+	CONSTRAINT PK_Employees PRIMARY KEY(Employees_id) ;
+    drop table Employees;
+
+insert into Employees
+( Employees_id, LName, FName, MName, phone )
+ values 
+(1, 'Іваненко', 'Іван', 'Іванович', '(093)025-41-45'),
+(2, 'Шевченко', 'Олег', 'Іванович', '(095)825-46-69'),
+(3, 'Ященко', 'Артем', 'Юрійович',  '(067)025-21-49'),  
+(4, 'Кучера', 'Олена', 'Ігорівна',  '(097)036-41-87'); 
+select * from Employees;
+   
+ /* в наступній таблиці вирішили відсотувати за посадою (така необхідність теж може виникнути). 
+ Аналогічно скористались створенням вручну некластеризованого індексу idx_pname1 при існуючому також кластеризованому.  */   
+create table Salaryes
+(salaryes_id int NOT NULL ,
+position VARCHAR(50) NOT NULL,
+salary int NOT NULL
 );
 
--- Получите информацию обо всех менеджерах компании: дату рождения и номер телефона. 
+CREATE INDEX idx_pname1
+ON Salaryes (position, salary );
 
-INSERT INTO Employees (EmployeeID, FirstName, LastName, PhoneNumber)
-VALUES (1, 'Іван', 'Сірко', '+380-97-123-45-67'),
-       (2, 'Петро', 'Сагайдачний', '+380-66-789-12-34'),
-       (3, 'Сергій', 'Богдан', '+380-50-901-23-45'),
-       (4, 'Ольга', 'Тригуб', '+380-63-456-78-90'),
-       (5, 'Наталія', 'Мосійчук', '+380-97-555-55-55');
+ALTER TABLE Salaryes ADD 
+	CONSTRAINT PK_Salaryes PRIMARY KEY(salaryes_id) ;
+    
+ALTER TABLE Salaryes ADD CONSTRAINT
+FK_Salaryes_Salaryes FOREIGN KEY(salaryes_id) 
+	REFERENCES Employees(Employees_id)  ;
+    
+insert into Salaryes
+( salaryes_id, position, salary)
+ values  
+ (1, 'Головний директор', 30000),
+ (2, 'Менеджер', 20000),
+ (3, 'Головний робітник', 15000), /*трохи змінили дані, щоб чітко бачити чи відбулось необхідне сортування  */
+ (4, 'Робітник', 13000);
+ 
+ select * from Salaryes;
+ drop table Salaryes;
+ 
+/* в наступній таблиці використовуючи некластеризований індекс сортуємо по статусу - 
+спочатку неодружені, а потім одружені.*/   
+create table Informations
+(informations_id int NOT NULL ,
+status VARCHAR(50) NOT NULL,
+birthday date NOT NULL,
+adress VARCHAR(50) NOT NULL
+);
 
-INSERT INTO Salaries (EmployeeID, Position, Salary)
-VALUES (1, 'головний директор', 100000),
-       (2, 'менеджер', 50000),
-       (3, 'робітник', 25000),
-       (4, 'робітник', 25000),
-       (5, 'робітник', 25000);
-       
-INSERT INTO PersonalInfo (EmployeeID, BirthDate, MaritalStatus, Address)
-VALUES (1, '1980-01-01', 'одружений', 'м. Київ, вул. Леніна, 1'),
-       (2, '1985-03-15', 'холостий', 'м. Львів, вул. Галицька, 20'),
-       (3, '1990-05-20', 'холостий', 'м. Харків, вул. Гагаріна, 5'),
-       (4, '1995-07-25', 'заміжня', 'м. Одеса, вул. Дерибасівська, 10'),
-       (5, '2000-09-30', 'холостий', 'м. Дніпро, просп. Гагаріна, 15');
+CREATE INDEX idx_pname2
+ON Informations (status, birthday, adress );
 
--- Создайте представления для таких заданий:: 
--- 1. Необходимо узнать контактные данные сотрудников (номера телефонов, место жительства).
-
-EXPLAIN SELECT Employees.EmployeeID, Employees.FirstName, Employees.LastName, Employees.PhoneNumber, PersonalInfo.Address
-FROM Employees
-INNER JOIN PersonalInfo ON PersonalInfo.EmployeeID = Employees.EmployeeID;
-
--- 2. Необходимо узнать информацию о дате рождения всех не женатых сотрудников и номера телефонов этих сотрудников.
-
-SELECT Employees.EmployeeID, Employees.FirstName, Employees.LastName, Employees.PhoneNumber, PersonalInfo.BirthDate, PersonalInfo.MaritalStatus
-FROM Employees 
-INNER JOIN PersonalInfo ON PersonalInfo.EmployeeID = Employees.EmployeeID
-WHERE PersonalInfo.MaritalStatus LIKE 'холостий';
-
--- 3. Необходимо узнать информацию о дате рождения всех сотрудников с должностью менеджер и номера телефонов этих сотрудников. 
-SELECT Employees.EmployeeID, Employees.FirstName, Employees.LastName, PersonalInfo.BirthDate, Employees.PhoneNumber, Salaries.Position
-FROM Employees 
-INNER JOIN PersonalInfo ON Employees.EmployeeID = PersonalInfo.EmployeeID
-INNER JOIN Salaries ON Employees.EmployeeID = Salaries.EmployeeID
-WHERE Salaries.Position = 'менеджер';
+ALTER TABLE Informations ADD 
+	CONSTRAINT PK_Informations PRIMARY KEY(informations_id) ;
+    
+ALTER TABLE Informations ADD CONSTRAINT
+FK_Informations_Informations FOREIGN KEY(informations_id) 
+	REFERENCES Employees(Employees_id)  ;
+   
+   insert into Informations
+   (informations_id, status, birthday, adress)
+   values
+   (1, 'Неодружений', '1985-11-25', 'вул. Васильківська, 35'),
+   (2, 'Одружений', '1986-01-15', 'вул. Миру, 100'),
+   (3, 'Неодружений', '1987-07-06', 'вул. Перемоги, 31/112'),
+   (4, 'Одружений', '1988-05-11', 'вул. Хрещатик, 45/100');
+   select * from Informations;
+   drop table Informations;
+   /*У нашому випадку за допомогою PRIMARY KEY (id) відбувався звязок з таблицями, були зовнішні ключі - 
+   порушувати ці зв'язки ми не могли,але і не завжди необхідно сортування за id, 
+   Саме тому доцільно використовувати некластеризовані індекси.*/
+   
 
 
